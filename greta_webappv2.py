@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, time, timedelta
+import calendar
 from io import BytesIO
 from urllib.parse import quote
 import re
@@ -721,12 +722,11 @@ elif menu == "Agenda Fresha":
             render_whatsapp_buttons(selected_row)
 
 
-# =========================
-# CALENDARIO
-# =========================
-
 elif menu == "Calendario":
-    st.header("Calendario de citas")
+    render_fresha_hero(
+        "Calendario",
+        "Vista flexible de citas por año, mes, semana o día."
+    )
 
     citas = st.session_state.citas.copy()
 
@@ -734,59 +734,308 @@ elif menu == "Calendario":
         st.session_state.empleados["Activo"] == True
     ]["Nombre"].tolist()
 
-    filtro_empleado = st.selectbox(
-        "Filtrar por empleada",
-        ["Todas"] + empleados_activos
+    vista = st.radio(
+        "Vista del calendario",
+        ["Día", "Semana", "Mes", "Año"],
+        horizontal=True,
+        key="calendario_tipo_vista"
     )
 
-    fecha_base = st.date_input("Semana de", value=date.today())
-
-    inicio_semana = fecha_base - timedelta(days=fecha_base.weekday())
-    dias = [inicio_semana + timedelta(days=i) for i in range(7)]
+    filtro_empleado = st.selectbox(
+        "Filtrar por empleada",
+        ["Todas"] + empleados_activos,
+        key="calendario_filtro_empleado"
+    )
 
     if filtro_empleado != "Todas":
         citas = citas[citas["Empleado"] == filtro_empleado]
 
-    cols = st.columns(7)
+    citas["Fecha_dt"] = pd.to_datetime(citas["Fecha"], errors="coerce")
+    citas = citas.dropna(subset=["Fecha_dt"])
 
-    for i, dia in enumerate(dias):
-        with cols[i]:
-            st.markdown(f"""
-            <div class="day-box">
-            <b>{dia.strftime('%A')}</b><br>
-            {dia.strftime('%d/%m/%Y')}
-            <hr>
-            """, unsafe_allow_html=True)
+    # =========================
+    # VISTA DÍA
+    # =========================
 
-            citas_dia = citas[citas["Fecha"].astype(str) == str(dia)]
+    if vista == "Día":
+        fecha_dia = st.date_input(
+            "Selecciona día",
+            value=date.today(),
+            key="calendario_vista_dia"
+        )
 
-            if citas_dia.empty:
-                st.caption("Sin citas")
-            else:
-                for idx, row in citas_dia.sort_values("Hora").iterrows():
-                    render_appointment_card(row, compact=True)
+        citas_dia = citas[citas["Fecha_dt"].dt.date == fecha_dia]
 
-                    with st.expander(f"Ver detalles - {row['Cliente']} {row['Hora']}"):
-                        cliente_info = st.session_state.clientes[
-                            st.session_state.clientes["Nombre"] == row["Cliente"]
-                        ]
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            render_stat_card("Citas del día", len(citas_dia), fecha_dia.strftime("%d/%m/%Y"))
+        with c2:
+            total_dia = pd.to_numeric(citas_dia.get("Precio", 0), errors="coerce").fillna(0).sum()
+            render_stat_card("Ventas del día", money(total_dia), "Según citas filtradas")
+        with c3:
+            clientes_dia = citas_dia["Cliente"].nunique() if not citas_dia.empty else 0
+            render_stat_card("Clientes", clientes_dia, "Clientes únicos")
 
-                        if not cliente_info.empty:
-                            cli = cliente_info.iloc[0]
-                            st.write(f"**Teléfono:** {cli['Telefono']}")
-                            st.write(f"**Email:** {cli['Email']}")
-                            st.write(f"**Perfil cliente:** {cli['Notas']}")
+        st.markdown("### Agenda del día")
 
-                        st.write(f"**Diseño:** {row['Diseno']}")
-                        st.write(f"**Materiales:** {row['Materiales']}")
-                        st.write(f"**Costo materiales:** {money(row['Costo materiales'])}")
-                        st.write(f"**Estado:** {row['Estado']}")
-                        st.write(f"**Notas cita:** {row['Notas']}")
-                        st.divider()
-                        st.write("**WhatsApp del cliente**")
-                        render_whatsapp_buttons(row)
+        if citas_dia.empty:
+            st.info("No hay citas para este día.")
+        else:
+            for _, row in citas_dia.sort_values("Hora").iterrows():
+                render_appointment_card(row)
 
-            st.markdown("</div>", unsafe_allow_html=True)
+                with st.expander(f"Ver detalles - {row['Cliente']} {row['Hora']}"):
+                    cliente_info = st.session_state.clientes[
+                        st.session_state.clientes["Nombre"] == row["Cliente"]
+                    ]
+
+                    if not cliente_info.empty:
+                        cli = cliente_info.iloc[0]
+                        st.write(f"**Teléfono:** {cli['Telefono']}")
+                        st.write(f"**Email:** {cli['Email']}")
+                        st.write(f"**Perfil cliente:** {cli['Notas']}")
+
+                    st.write(f"**Servicio:** {row['Servicio']}")
+                    st.write(f"**Diseño:** {row['Diseno']}")
+                    st.write(f"**Materiales:** {row['Materiales']}")
+                    st.write(f"**Costo materiales:** {money(row['Costo materiales'])}")
+                    st.write(f"**Precio:** {money(row['Precio'])}")
+                    st.write(f"**Estado:** {row['Estado']}")
+                    st.write(f"**Notas cita:** {row['Notas']}")
+                    st.divider()
+                    render_whatsapp_buttons(row)
+
+    # =========================
+    # VISTA SEMANA
+    # =========================
+
+    elif vista == "Semana":
+        fecha_base = st.date_input(
+            "Semana de",
+            value=date.today(),
+            key="calendario_vista_semana"
+        )
+
+        inicio_semana = fecha_base - timedelta(days=fecha_base.weekday())
+        fin_semana = inicio_semana + timedelta(days=6)
+        dias = [inicio_semana + timedelta(days=i) for i in range(7)]
+
+        citas_semana = citas[
+            (citas["Fecha_dt"].dt.date >= inicio_semana) &
+            (citas["Fecha_dt"].dt.date <= fin_semana)
+        ]
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            render_stat_card("Citas de la semana", len(citas_semana), f"{inicio_semana.strftime('%d/%m')} - {fin_semana.strftime('%d/%m')}")
+        with c2:
+            total_semana = pd.to_numeric(citas_semana.get("Precio", 0), errors="coerce").fillna(0).sum()
+            render_stat_card("Ventas semana", money(total_semana), "Según citas filtradas")
+        with c3:
+            clientes_semana = citas_semana["Cliente"].nunique() if not citas_semana.empty else 0
+            render_stat_card("Clientes", clientes_semana, "Clientes únicos")
+
+        cols = st.columns(7)
+
+        dias_es = {
+            "Monday": "Lunes",
+            "Tuesday": "Martes",
+            "Wednesday": "Miércoles",
+            "Thursday": "Jueves",
+            "Friday": "Viernes",
+            "Saturday": "Sábado",
+            "Sunday": "Domingo"
+        }
+
+        for i, dia in enumerate(dias):
+            with cols[i]:
+                nombre_dia = dias_es.get(dia.strftime("%A"), dia.strftime("%A"))
+
+                st.markdown(f"""
+                <div class="day-box">
+                <b>{nombre_dia}</b><br>
+                {dia.strftime('%d/%m/%Y')}
+                <hr>
+                """, unsafe_allow_html=True)
+
+                citas_dia = citas[citas["Fecha_dt"].dt.date == dia]
+
+                if citas_dia.empty:
+                    st.caption("Sin citas")
+                else:
+                    for idx, row in citas_dia.sort_values("Hora").iterrows():
+                        render_appointment_card(row, compact=True)
+
+                        with st.expander(f"Ver - {row['Cliente']}"):
+                            st.write(f"**Hora:** {row['Hora']}")
+                            st.write(f"**Cliente:** {row['Cliente']}")
+                            st.write(f"**Empleado:** {row['Empleado']}")
+                            st.write(f"**Servicio:** {row['Servicio']}")
+                            st.write(f"**Diseño:** {row['Diseno']}")
+                            st.write(f"**Materiales:** {row['Materiales']}")
+                            st.write(f"**Precio:** {money(row['Precio'])}")
+                            st.write(f"**Estado:** {row['Estado']}")
+                            render_whatsapp_buttons(row)
+
+                st.markdown("</div>", unsafe_allow_html=True)
+
+    # =========================
+    # VISTA MES
+    # =========================
+
+    elif vista == "Mes":
+        hoy = date.today()
+
+        col_mes, col_anio = st.columns(2)
+
+        with col_mes:
+            mes = st.selectbox(
+                "Mes",
+                list(range(1, 13)),
+                index=hoy.month - 1,
+                format_func=lambda x: [
+                    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+                ][x - 1],
+                key="calendario_mes"
+            )
+
+        with col_anio:
+            anio = st.number_input(
+                "Año",
+                min_value=2020,
+                max_value=2035,
+                value=hoy.year,
+                step=1,
+                key="calendario_anio_mes"
+            )
+
+        citas_mes = citas[
+            (citas["Fecha_dt"].dt.month == mes) &
+            (citas["Fecha_dt"].dt.year == anio)
+        ]
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            render_stat_card("Citas del mes", len(citas_mes), "Total mensual")
+        with c2:
+            total_mes = pd.to_numeric(citas_mes.get("Precio", 0), errors="coerce").fillna(0).sum()
+            render_stat_card("Ventas del mes", money(total_mes), "Según citas filtradas")
+        with c3:
+            clientes_mes = citas_mes["Cliente"].nunique() if not citas_mes.empty else 0
+            render_stat_card("Clientes", clientes_mes, "Clientes únicos")
+
+        st.markdown("### Calendario mensual")
+
+        cal = calendar.Calendar(firstweekday=0)
+        semanas = cal.monthdatescalendar(int(anio), int(mes))
+
+        dias_es_corto = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+        header_cols = st.columns(7)
+        for i, nombre in enumerate(dias_es_corto):
+            header_cols[i].markdown(f"**{nombre}**")
+
+        for semana in semanas:
+            cols = st.columns(7)
+
+            for i, dia in enumerate(semana):
+                with cols[i]:
+                    if dia.month != mes:
+                        st.markdown(f"""
+                        <div class="day-box" style="opacity:0.35;">
+                        <b>{dia.day}</b>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        citas_dia = citas_mes[citas_mes["Fecha_dt"].dt.date == dia]
+
+                        st.markdown(f"""
+                        <div class="day-box">
+                        <b>{dia.day}</b><br>
+                        <span class="small-muted">{len(citas_dia)} citas</span>
+                        <hr>
+                        """, unsafe_allow_html=True)
+
+                        if citas_dia.empty:
+                            st.caption("Sin citas")
+                        else:
+                            for _, row in citas_dia.sort_values("Hora").head(4).iterrows():
+                                render_appointment_card(row, compact=True)
+
+                            if len(citas_dia) > 4:
+                                st.caption(f"+ {len(citas_dia) - 4} más")
+
+                        st.markdown("</div>", unsafe_allow_html=True)
+
+    # =========================
+    # VISTA AÑO
+    # =========================
+
+    elif vista == "Año":
+        anio = st.number_input(
+            "Selecciona año",
+            min_value=2020,
+            max_value=2035,
+            value=date.today().year,
+            step=1,
+            key="calendario_vista_anio"
+        )
+
+        citas_anio = citas[citas["Fecha_dt"].dt.year == anio]
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            render_stat_card("Citas del año", len(citas_anio), str(anio))
+        with c2:
+            total_anio = pd.to_numeric(citas_anio.get("Precio", 0), errors="coerce").fillna(0).sum()
+            render_stat_card("Ventas del año", money(total_anio), "Según citas filtradas")
+        with c3:
+            clientes_anio = citas_anio["Cliente"].nunique() if not citas_anio.empty else 0
+            render_stat_card("Clientes", clientes_anio, "Clientes únicos")
+
+        st.markdown("### Resumen anual por mes")
+
+        meses_nombre = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ]
+
+        rows = []
+
+        for m in range(1, 13):
+            citas_m = citas_anio[citas_anio["Fecha_dt"].dt.month == m]
+            ventas_m = pd.to_numeric(citas_m.get("Precio", 0), errors="coerce").fillna(0).sum()
+
+            rows.append({
+                "Mes": meses_nombre[m - 1],
+                "Citas": len(citas_m),
+                "Clientes únicos": citas_m["Cliente"].nunique() if not citas_m.empty else 0,
+                "Ventas": ventas_m
+            })
+
+        resumen_anual = pd.DataFrame(rows)
+        st.dataframe(resumen_anual, use_container_width=True)
+
+        st.markdown("### Vista rápida por mes")
+
+        for fila in range(0, 12, 4):
+            cols = st.columns(4)
+
+            for i in range(4):
+                mes_num = fila + i + 1
+                mes_nombre = meses_nombre[mes_num - 1]
+                citas_m = citas_anio[citas_anio["Fecha_dt"].dt.month == mes_num]
+                ventas_m = pd.to_numeric(citas_m.get("Precio", 0), errors="coerce").fillna(0).sum()
+
+                with cols[i]:
+                    st.markdown(f"""
+                    <div class="fresha-stat-card">
+                        <div class="fresha-stat-label">{mes_nombre}</div>
+                        <div class="fresha-stat-value">{len(citas_m)}</div>
+                        <div class="small-muted">citas · {money(ventas_m)}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
 
 # =========================
