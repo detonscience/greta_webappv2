@@ -1,4 +1,4 @@
-cd /Users/jasonsaenz/Documents/projects
+
 
 python3 <<'PY'
 from pathlib import Path
