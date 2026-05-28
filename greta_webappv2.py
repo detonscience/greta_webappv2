@@ -1,489 +1,100 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime, date, time, timedelta
-import calendar
-from io import BytesIO
-from urllib.parse import quote
-import re
+cd /Users/jasonsaenz/Documents/projects
 
-st.set_page_config(
-    page_title="Greta Studio App",
-    page_icon="💅",
-    layout="wide"
-)
+python3 <<'PY'
+from pathlib import Path
 
-# =========================
-# ESTILOS
-# =========================
+path = Path("greta_webappv2.py")
+text = path.read_text()
 
-st.markdown("""
-<style>
-.main {
-    background-color: #fff7fb;
-}
-.block-container {
-    padding-top: 1.5rem;
-}
-.metric-card {
-    background: white;
-    padding: 18px;
-    border-radius: 18px;
-    box-shadow: 0px 4px 16px rgba(0,0,0,0.08);
-    border-left: 6px solid #d94f91;
-}
-.app-title {
-    font-size: 34px;
-    font-weight: 800;
-    color: #7a1f4d;
-}
-.small-muted {
-    color: #777;
-    font-size: 14px;
-}
-.gretta-card {
-    background-color: #ffe1ef;
-    border-radius: 14px;
-    padding: 12px;
-    margin-bottom: 8px;
-    border-left: 5px solid #d94f91;
-}
-.eva-card {
-    background-color: #e7f1ff;
-    border-radius: 14px;
-    padding: 12px;
-    margin-bottom: 8px;
-    border-left: 5px solid #3f7fd9;
-}
-.day-box {
-    background: white;
-    border-radius: 16px;
-    padding: 12px;
-    min-height: 230px;
-    box-shadow: 0px 3px 12px rgba(0,0,0,0.07);
-}
-.fresha-hero {
-    background: linear-gradient(135deg, #ffffff 0%, #fff0f7 100%);
-    border: 1px solid #f4c9dd;
-    border-radius: 24px;
-    padding: 22px;
-    margin-bottom: 18px;
-    box-shadow: 0px 8px 24px rgba(122,31,77,0.08);
-}
-.fresha-title {
-    font-size: 30px;
-    font-weight: 850;
-    color: #41122a;
-    margin-bottom: 4px;
-}
-.fresha-subtitle {
-    color: #7b6170;
-    font-size: 15px;
-}
-.fresha-stat-card {
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 16px;
-    border: 1px solid #f1d6e3;
-    box-shadow: 0px 5px 18px rgba(0,0,0,0.05);
-}
-.fresha-stat-label {
-    color: #8b6b7b;
-    font-size: 13px;
-    font-weight: 650;
-}
-.fresha-stat-value {
-    color: #351020;
-    font-size: 25px;
-    font-weight: 850;
-}
-.fresha-pill {
-    display: inline-block;
-    padding: 5px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 750;
-    margin-top: 6px;
-}
-.pill-confirmada { background: #e7f8ee; color: #14783d; }
-.pill-pendiente { background: #fff4d6; color: #8a6100; }
-.pill-cancelada { background: #ffe3e3; color: #a32626; }
-.pill-completada { background: #e7f1ff; color: #2458a8; }
-.appointment-card {
-    background: #ffffff;
-    border-radius: 18px;
-    padding: 12px;
-    margin-bottom: 10px;
-    border: 1px solid #f1d6e3;
-    box-shadow: 0px 3px 12px rgba(0,0,0,0.06);
-}
-.appointment-time {
-    font-size: 18px;
-    font-weight: 850;
-    color: #341020;
-}
-.appointment-client {
-    font-size: 15px;
-    font-weight: 750;
-    color: #4a2032;
-}
-.appointment-meta {
-    color: #77606b;
-    font-size: 13px;
-    line-height: 1.35;
-}
-.timeline-row {
-    display: grid;
-    grid-template-columns: 72px 1fr;
-    gap: 12px;
-    align-items: start;
-    margin-bottom: 12px;
-}
-.timeline-hour {
-    color: #7a1f4d;
-    font-weight: 850;
-    padding-top: 12px;
-}
-.quick-action-box {
-    background: #fffafc;
-    border: 1px dashed #e9accb;
-    border-radius: 18px;
-    padding: 14px;
-    margin-top: 10px;
-}
-.section-chip {
-    display: inline-block;
-    background: #f7dce9;
-    color: #7a1f4d;
-    padding: 6px 11px;
-    border-radius: 999px;
-    font-weight: 800;
-    font-size: 12px;
-    margin-bottom: 10px;
-}
-</style>
-""", unsafe_allow_html=True)
+# -------------------------------------------------
+# 1) Agregar datos iniciales: catálogo, ventas, usuarios, settings
+# -------------------------------------------------
+marker = "\n\ninit_data()\n"
+insert_data = r'''
 
-
-# =========================
-# DATOS INICIALES
-# =========================
-
-def init_data():
-    if "clientes" not in st.session_state:
-        st.session_state.clientes = pd.DataFrame([
+    if "catalogo" not in st.session_state:
+        st.session_state.catalogo = pd.DataFrame([
             {
-                "Nombre": "Maria Lopez",
-                "Telefono": "555-111-2222",
-                "Email": "maria@email.com",
-                "Cumpleanos": "1990-05-12",
-                "Notas": "Prefiere diseños naturales"
-            },
-            {
-                "Nombre": "Ana Torres",
-                "Telefono": "555-333-4444",
-                "Email": "ana@email.com",
-                "Cumpleanos": "1988-09-21",
-                "Notas": "Le gusta el color rojo"
-            }
-        ])
-
-    if "empleados" not in st.session_state:
-        st.session_state.empleados = pd.DataFrame([
-            {
-                "Nombre": "Greta",
-                "Puesto": "Dueña",
-                "Activo": True,
-                "Tipo pago": "Dueña",
-                "Sueldo base": 0.0,
-                "Comision %": 0.0
-            },
-            {
-                "Nombre": "Eva",
-                "Puesto": "Empleada",
-                "Activo": True,
-                "Tipo pago": "Sueldo + comisión",
-                "Sueldo base": 600.0,
-                "Comision %": 20.0
-            }
-        ])
-
-    if "citas" not in st.session_state:
-        hoy = date.today()
-        st.session_state.citas = pd.DataFrame([
-            {
-                "Fecha": str(hoy),
-                "Hora": "10:00",
-                "Cliente": "Maria Lopez",
-                "Empleado": "Greta",
                 "Servicio": "Manicure gel",
-                "Diseno": "French sencillo",
-                "Materiales": "Gel base, top coat, blanco",
-                "Costo materiales": 8.0,
+                "Categoria": "Manos",
+                "Duracion min": 60,
                 "Precio": 55.0,
-                "Estado": "Confirmada",
-                "Notas": "Cliente frecuente"
+                "Activo": True,
+                "Descripcion": "Aplicación de gel con limpieza básica."
             },
             {
-                "Fecha": str(hoy),
-                "Hora": "12:30",
-                "Cliente": "Ana Torres",
-                "Empleado": "Eva",
                 "Servicio": "Acrílico",
-                "Diseno": "Rojo con glitter",
-                "Materiales": "Acrílico, tips, glitter",
-                "Costo materiales": 12.0,
+                "Categoria": "Manos",
+                "Duracion min": 90,
                 "Precio": 75.0,
-                "Estado": "Confirmada",
-                "Notas": "Primera vez"
-            }
-        ])
-
-    if "inventario" not in st.session_state:
-        st.session_state.inventario = pd.DataFrame([
-            {
-                "Producto": "Gel base",
-                "Categoria": "Gel",
-                "Cantidad": 10,
-                "Minimo": 3,
-                "Costo unidad": 7.5,
-                "Barcode": "GEL001"
+                "Activo": True,
+                "Descripcion": "Set acrílico completo."
             },
             {
-                "Producto": "Top coat",
-                "Categoria": "Gel",
-                "Cantidad": 2,
-                "Minimo": 3,
-                "Costo unidad": 8.0,
-                "Barcode": "GEL002"
+                "Servicio": "Pedicure",
+                "Categoria": "Pies",
+                "Duracion min": 60,
+                "Precio": 50.0,
+                "Activo": True,
+                "Descripcion": "Pedicure sencillo."
             }
         ])
 
-    if "gastos" not in st.session_state:
-        st.session_state.gastos = pd.DataFrame([
+    if "ventas" not in st.session_state:
+        st.session_state.ventas = pd.DataFrame([
             {
                 "Fecha": str(date.today()),
-                "Concepto": "Materiales",
-                "Categoria": "Inventario",
-                "Monto": 120.0,
-                "Notas": "Compra inicial"
+                "Cliente": "Maria Lopez",
+                "Servicio": "Manicure gel",
+                "Empleado": "Greta",
+                "Metodo pago": "Tarjeta",
+                "Subtotal": 55.0,
+                "Descuento": 0.0,
+                "Total": 55.0,
+                "Notas": "Venta demo"
             }
         ])
 
+    if "usuarios" not in st.session_state:
+        st.session_state.usuarios = pd.DataFrame([
+            {
+                "Usuario": "admin",
+                "Nombre": "Greta",
+                "Rol": "Admin",
+                "Activo": True
+            },
+            {
+                "Usuario": "recepcion",
+                "Nombre": "Recepción",
+                "Rol": "Recepción",
+                "Activo": True
+            },
+            {
+                "Usuario": "eva",
+                "Nombre": "Eva",
+                "Rol": "Empleada",
+                "Activo": True
+            }
+        ])
 
-init_data()
+    if "app_settings" not in st.session_state:
+        st.session_state.app_settings = {
+            "nombre_negocio": "Greta Studio",
+            "telefono_negocio": "",
+            "direccion_negocio": "",
+            "moneda": "USD",
+            "online_booking_activo": True,
+            "requiere_confirmacion_online": True
+        }
+'''
 
+if insert_data.strip() not in text:
+    text = text.replace(marker, insert_data + marker)
 
-# =========================
-# FUNCIONES
-# =========================
-
-def money(x):
-    try:
-        return f"${float(x):,.2f}"
-    except:
-        return "$0.00"
-
-
-# ========== Fresha UI helpers ==========
-
-def status_class(status):
-    status_clean = str(status).strip().lower()
-    mapping = {
-        "confirmada": "pill-confirmada",
-        "pendiente": "pill-pendiente",
-        "cancelada": "pill-cancelada",
-        "completada": "pill-completada"
-    }
-    return mapping.get(status_clean, "pill-pendiente")
-
-
-def render_fresha_hero(title, subtitle):
-    st.markdown(f"""
-    <div class="fresha-hero">
-        <div class="fresha-title">{title}</div>
-        <div class="fresha-subtitle">{subtitle}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_stat_card(label, value, note=""):
-    st.markdown(f"""
-    <div class="fresha-stat-card">
-        <div class="fresha-stat-label">{label}</div>
-        <div class="fresha-stat-value">{value}</div>
-        <div class="small-muted">{note}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_appointment_card(row, compact=False):
-    pill_class = status_class(row.get("Estado", "Pendiente"))
-    diseno = row.get("Diseno", "")
-    materiales = row.get("Materiales", "")
-    extra = "" if compact else f"<br>Diseño: {diseno}<br>Materiales: {materiales}"
-    st.markdown(f"""
-    <div class="appointment-card">
-        <div class="appointment-time">{row['Hora']}</div>
-        <div class="appointment-client">{row['Cliente']}</div>
-        <div class="appointment-meta">
-            {row['Servicio']} · {row['Empleado']}<br>
-            Precio: <b>{money(row['Precio'])}</b>{extra}
-        </div>
-        <span class="fresha-pill {pill_class}">{row.get('Estado', 'Pendiente')}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-
-def get_employee_class(nombre):
-    if nombre == "Greta":
-        return "gretta-card"
-    if nombre == "Eva":
-        return "eva-card"
-    return "gretta-card"
-
-
-def clean_phone_for_whatsapp(phone):
-    """Limpia el teléfono para usarlo con WhatsApp.
-    Si tiene 10 dígitos, asume número de Estados Unidos y agrega 1.
-    """
-    digits = re.sub(r"\D", "", str(phone))
-
-    if len(digits) == 10:
-        digits = "1" + digits
-
-    return digits
-
-
-def get_client_info(client_name):
-    clientes = st.session_state.clientes.copy()
-    cliente_info = clientes[clientes["Nombre"] == client_name]
-
-    if cliente_info.empty:
-        return None
-
-    return cliente_info.iloc[0]
-
-
-def build_whatsapp_url(phone, message):
-    clean_phone = clean_phone_for_whatsapp(phone)
-    encoded_message = quote(message)
-    return f"https://wa.me/{clean_phone}?text={encoded_message}"
-
-
-def whatsapp_template(tipo, cliente="", fecha="", hora="", empleado="", servicio="", descuento=""):
-    templates = {
-        "Confirmación cálida": (
-            f"Hola {cliente}, te escribimos de Greta Studio para confirmar tu cita "
-            f"del {fecha} a las {hora} con {empleado} para {servicio}. "
-            f"¿Nos confirmas por favor? 💅"
-        ),
-        "Confirmación breve": (
-            f"Hola {cliente}, solo queremos confirmar tu cita en Greta Studio: "
-            f"{fecha} a las {hora}. Servicio: {servicio}. ¿Confirmas?"
-        ),
-        "Recordatorio cálido": (
-            f"Hola {cliente}, te recordamos tu cita en Greta Studio el {fecha} "
-            f"a las {hora} con {empleado}. Servicio: {servicio}. ¡Te esperamos! 💗"
-        ),
-        "Recordatorio con política": (
-            f"Hola {cliente}, te recordamos tu cita en Greta Studio el {fecha} a las {hora}. "
-            f"Si necesitas cambiarla, avísanos con tiempo por favor. ¡Gracias!"
-        ),
-        "Gracias después de cita": (
-            f"Hola {cliente}, muchas gracias por visitar Greta Studio. "
-            f"Esperamos que te haya encantado tu servicio de {servicio}. "
-            f"Será un gusto verte de nuevo 💗"
-        ),
-        "Pedir reseña": (
-            f"Hola {cliente}, gracias por visitarnos en Greta Studio. "
-            f"Si te gustó tu servicio de {servicio}, nos ayudaría mucho que nos recomendaras "
-            f"o nos dejaras una reseña. ¡Gracias por tu apoyo! 💅"
-        ),
-        "Promo general": (
-            f"Hola {cliente}, tenemos una promoción especial en Greta Studio. "
-            f"Esta semana puedes aprovechar {descuento or 'un descuento especial'} en servicios seleccionados. "
-            f"¿Te gustaría agendar?"
-        ),
-        "Cumpleaños": (
-            f"¡Feliz cumpleaños, {cliente}! 🎉 De parte de Greta Studio queremos consentirte con "
-            f"{descuento or 'un descuento especial'} en tu próxima visita. "
-            f"Cuando gustes, te ayudamos a agendar 💗"
-        ),
-        "Reactivar cliente": (
-            f"Hola {cliente}, hace tiempo que no te vemos por Greta Studio. "
-            f"Nos encantaría atenderte otra vez. Tenemos espacios disponibles esta semana, "
-            f"¿quieres que te ayudemos a agendar?"
-        )
-    }
-    return templates.get(tipo, "")
-
-
-def render_whatsapp_buttons(row, custom_messages=None):
-    cliente = get_client_info(row["Cliente"])
-
-    if cliente is None:
-        st.caption("No se encontró teléfono del cliente para WhatsApp.")
-        return
-
-    telefono = cliente.get("Telefono", "")
-    clean_phone = clean_phone_for_whatsapp(telefono)
-
-    if not clean_phone:
-        st.caption("Este cliente no tiene teléfono registrado.")
-        return
-
-    default_messages = {
-        "confirmacion": whatsapp_template(
-            "Confirmación cálida",
-            cliente=row["Cliente"],
-            fecha=row["Fecha"],
-            hora=row["Hora"],
-            empleado=row["Empleado"],
-            servicio=row["Servicio"]
-        ),
-        "recordatorio": whatsapp_template(
-            "Recordatorio cálido",
-            cliente=row["Cliente"],
-            fecha=row["Fecha"],
-            hora=row["Hora"],
-            empleado=row["Empleado"],
-            servicio=row["Servicio"]
-        ),
-        "gracias": whatsapp_template(
-            "Gracias después de cita",
-            cliente=row["Cliente"],
-            fecha=row["Fecha"],
-            hora=row["Hora"],
-            empleado=row["Empleado"],
-            servicio=row["Servicio"]
-        )
-    }
-
-    if custom_messages:
-        default_messages.update(custom_messages)
-
-    confirm_url = build_whatsapp_url(telefono, default_messages["confirmacion"])
-    reminder_url = build_whatsapp_url(telefono, default_messages["recordatorio"])
-    thanks_url = build_whatsapp_url(telefono, default_messages["gracias"])
-
-    w1, w2, w3 = st.columns(3)
-    w1.link_button("✅ Confirmar", confirm_url)
-    w2.link_button("⏰ Recordar", reminder_url)
-    w3.link_button("💗 Gracias", thanks_url)
-
-
-def export_excel():
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        st.session_state.clientes.to_excel(writer, index=False, sheet_name="Clientes")
-        st.session_state.empleados.to_excel(writer, index=False, sheet_name="Empleados")
-        st.session_state.citas.to_excel(writer, index=False, sheet_name="Citas")
-        st.session_state.inventario.to_excel(writer, index=False, sheet_name="Inventario")
-        st.session_state.gastos.to_excel(writer, index=False, sheet_name="Gastos")
-    return output.getvalue()
-
-
+# -------------------------------------------------
+# 2) Agregar helpers de roles después de import_excel
+# -------------------------------------------------
+marker_helpers = '''
 def import_excel(file):
     xls = pd.ExcelFile(file)
     if "Clientes" in xls.sheet_names:
@@ -496,22 +107,71 @@ def import_excel(file):
         st.session_state.inventario = pd.read_excel(file, sheet_name="Inventario")
     if "Gastos" in xls.sheet_names:
         st.session_state.gastos = pd.read_excel(file, sheet_name="Gastos")
+'''
 
-
-# =========================
-# HEADER
-# =========================
-
-st.markdown('<div class="app-title">💅 Greta Studio App</div>', unsafe_allow_html=True)
-st.markdown('<div class="small-muted">Agenda, clientes, WhatsApp, inventario, empleados, nómina y finanzas en un solo lugar</div>', unsafe_allow_html=True)
-st.divider()
-
+role_helpers = marker_helpers + r'''
 
 # =========================
-# SIDEBAR
+# ROLES Y PERMISOS
 # =========================
 
-menu = st.sidebar.radio(
+ROLE_MENUS = {
+    "Admin": [
+        "Inicio",
+        "Agenda Fresha",
+        "Calendario",
+        "Nueva cita",
+        "Ventas",
+        "Lista de clientes",
+        "Catálogo",
+        "Online booking",
+        "Reportes",
+        "WhatsApp",
+        "Empleados",
+        "Nómina",
+        "Inventario",
+        "Finanzas",
+        "Settings",
+        "Excel / Backup"
+    ],
+    "Recepción": [
+        "Inicio",
+        "Agenda Fresha",
+        "Calendario",
+        "Nueva cita",
+        "Ventas",
+        "Lista de clientes",
+        "Catálogo",
+        "Online booking",
+        "WhatsApp"
+    ],
+    "Empleada": [
+        "Inicio",
+        "Agenda Fresha",
+        "Calendario",
+        "Lista de clientes",
+        "WhatsApp"
+    ]
+}
+
+
+def get_allowed_menus(role):
+    return ROLE_MENUS.get(role, ROLE_MENUS["Empleada"])
+
+
+def require_admin():
+    if st.session_state.get("current_role", "Admin") != "Admin":
+        st.warning("Esta sección es solo para Admin.")
+        st.stop()
+'''
+
+if "ROLE_MENUS = {" not in text:
+    text = text.replace(marker_helpers, role_helpers)
+
+# -------------------------------------------------
+# 3) Reemplazar sidebar por menú con roles
+# -------------------------------------------------
+old_sidebar = '''menu = st.sidebar.radio(
     "Menú principal",
     [
         "Inicio",
@@ -527,1068 +187,462 @@ menu = st.sidebar.radio(
         "Excel / Backup"
     ]
 )
+'''
 
+new_sidebar = '''st.sidebar.markdown("### Usuario / Rol")
 
-# =========================
-# INICIO Y AGENDA FRESHA
-# =========================
+roles_disponibles = ["Admin", "Recepción", "Empleada"]
 
-if menu == "Inicio":
-    render_fresha_hero(
-        "Inicio del estudio",
-        "Vista rápida tipo Fresha: ventas, próximas citas, clientes y accesos rápidos."
-    )
+current_role = st.sidebar.selectbox(
+    "Entrar como",
+    roles_disponibles,
+    index=roles_disponibles.index(st.session_state.get("current_role", "Admin")),
+    key="current_role_selector"
+)
 
-    citas = st.session_state.citas.copy()
-    gastos = st.session_state.gastos.copy()
-    clientes = st.session_state.clientes.copy()
-    inventario = st.session_state.inventario.copy()
+st.session_state.current_role = current_role
 
-    citas["Precio"] = pd.to_numeric(citas["Precio"], errors="coerce").fillna(0)
-    citas["Costo materiales"] = pd.to_numeric(citas["Costo materiales"], errors="coerce").fillna(0)
-    gastos["Monto"] = pd.to_numeric(gastos["Monto"], errors="coerce").fillna(0)
-    inventario["Cantidad"] = pd.to_numeric(inventario["Cantidad"], errors="coerce").fillna(0)
-    inventario["Minimo"] = pd.to_numeric(inventario["Minimo"], errors="coerce").fillna(0)
+st.sidebar.caption(f"Rol activo: {current_role}")
 
-    hoy = str(date.today())
-    citas_hoy = citas[citas["Fecha"].astype(str) == hoy]
-    ingresos = citas["Precio"].sum()
-    materiales = citas["Costo materiales"].sum()
-    gastos_total = gastos["Monto"].sum()
-    ganancia = ingresos - materiales - gastos_total
-    bajos = inventario[inventario["Cantidad"] <= inventario["Minimo"]]
+menu = st.sidebar.radio(
+    "Menú principal",
+    get_allowed_menus(current_role)
+)
+'''
 
-    s1, s2, s3, s4 = st.columns(4)
-    with s1:
-        render_stat_card("Ventas totales", money(ingresos), "Ingresos de citas registradas")
-    with s2:
-        render_stat_card("Citas de hoy", len(citas_hoy), "Servicios agendados hoy")
-    with s3:
-        render_stat_card("Clientes", len(clientes), "Base de datos actual")
-    with s4:
-        render_stat_card("Ganancia estimada", money(ganancia), "Después de materiales y gastos")
+if old_sidebar in text:
+    text = text.replace(old_sidebar, new_sidebar)
 
-    st.markdown("### Agenda de hoy")
+# -------------------------------------------------
+# 4) Cambiar bloque Clientes a Lista de clientes
+# -------------------------------------------------
+text = text.replace('elif menu == "Clientes":\n    st.header("Clientes")', 'elif menu == "Lista de clientes":\n    st.header("Lista de clientes")')
 
-    if citas_hoy.empty:
-        st.info("No hay citas para hoy.")
-    else:
-        for _, row in citas_hoy.sort_values("Hora").iterrows():
-            render_appointment_card(row)
-            render_whatsapp_buttons(row)
-
-    left, right = st.columns([1.2, 1])
-
-    with left:
-        st.markdown("### Resumen por empleada")
-        if citas.empty:
-            st.info("No hay citas registradas.")
-        else:
-            resumen = citas.groupby("Empleado").agg(
-                Citas=("Cliente", "count"),
-                Ingresos=("Precio", "sum"),
-                Materiales=("Costo materiales", "sum")
-            ).reset_index()
-            resumen["Ganancia antes de nómina"] = resumen["Ingresos"] - resumen["Materiales"]
-            st.dataframe(resumen, use_container_width=True)
-
-    with right:
-        st.markdown("### Acciones rápidas")
-        st.markdown("""
-        <div class="quick-action-box">
-            <b>Flujo recomendado</b><br>
-            1. Agrega cliente<br>
-            2. Agenda cita<br>
-            3. Confirma por WhatsApp<br>
-            4. Marca como completada<br>
-            5. Revisa finanzas y nómina
-        </div>
-        """, unsafe_allow_html=True)
-
-        if not bajos.empty:
-            st.warning("Productos bajos en inventario")
-            st.dataframe(bajos, use_container_width=True)
-        else:
-            st.success("Inventario sin alertas críticas.")
-
-
-elif menu == "Agenda Fresha":
-    render_fresha_hero(
-        "Agenda Fresha",
-        "Vista de agenda diaria con timeline, detalles del cliente y acciones rápidas."
-    )
-
-    citas = st.session_state.citas.copy()
-    clientes = st.session_state.clientes.copy()
-
-    empleados_activos = st.session_state.empleados[
-        st.session_state.empleados["Activo"] == True
-    ]["Nombre"].tolist()
-
-    top1, top2, top3 = st.columns([1, 1, 1])
-    with top1:
-        fecha_agenda = st.date_input("Fecha de agenda", value=date.today(), key="agenda_fresha_fecha")
-    with top2:
-        filtro_empleado = st.selectbox("Profesional", ["Todas"] + empleados_activos, key="agenda_fresha_empleado")
-    with top3:
-        filtro_estado = st.selectbox("Estado", ["Todos", "Confirmada", "Pendiente", "Cancelada", "Completada"], key="agenda_fresha_estado")
-
-    busqueda = st.text_input("Buscar cliente, servicio o notas", key="agenda_fresha_busqueda")
-
-    citas_dia = citas[citas["Fecha"].astype(str) == str(fecha_agenda)]
-
-    if filtro_empleado != "Todas":
-        citas_dia = citas_dia[citas_dia["Empleado"] == filtro_empleado]
-
-    if filtro_estado != "Todos":
-        citas_dia = citas_dia[citas_dia["Estado"] == filtro_estado]
-
-    if busqueda:
-        mask = citas_dia.apply(
-            lambda r: busqueda.lower() in " ".join([str(v) for v in r.values]).lower(),
-            axis=1
-        )
-        citas_dia = citas_dia[mask]
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        render_stat_card("Citas filtradas", len(citas_dia), "Resultado actual")
-    with k2:
-        render_stat_card("Ventas del día", money(pd.to_numeric(citas_dia.get("Precio", 0), errors="coerce").fillna(0).sum()), "Según filtros")
-    with k3:
-        render_stat_card("Materiales", money(pd.to_numeric(citas_dia.get("Costo materiales", 0), errors="coerce").fillna(0).sum()), "Costo estimado")
-    with k4:
-        render_stat_card("Clientes únicos", citas_dia["Cliente"].nunique() if not citas_dia.empty else 0, "En esta vista")
-
-    agenda_col, detalle_col = st.columns([1.35, 1])
-
-    with agenda_col:
-        st.markdown("### Timeline del día")
-
-        if citas_dia.empty:
-            st.info("No hay citas con esos filtros.")
-        else:
-            for idx, row in citas_dia.sort_values("Hora").iterrows():
-                st.markdown('<div class="timeline-row">', unsafe_allow_html=True)
-                st.markdown(f'<div class="timeline-hour">{row["Hora"]}</div>', unsafe_allow_html=True)
-                render_appointment_card(row)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-                with st.expander(f"Abrir cita: {row['Cliente']} · {row['Hora']}"):
-                    cliente_info = clientes[clientes["Nombre"] == row["Cliente"]]
-
-                    if not cliente_info.empty:
-                        cli = cliente_info.iloc[0]
-                        st.write(f"**Teléfono:** {cli['Telefono']}")
-                        st.write(f"**Email:** {cli['Email']}")
-                        st.write(f"**Perfil cliente:** {cli['Notas']}")
-
-                    st.write(f"**Servicio:** {row['Servicio']}")
-                    st.write(f"**Diseño / tipo de trabajo:** {row['Diseno']}")
-                    st.write(f"**Materiales:** {row['Materiales']}")
-                    st.write(f"**Costo materiales:** {money(row['Costo materiales'])}")
-                    st.write(f"**Precio:** {money(row['Precio'])}")
-                    st.write(f"**Estado:** {row['Estado']}")
-                    st.write(f"**Notas:** {row['Notas']}")
-                    st.divider()
-                    render_whatsapp_buttons(row)
-
-    with detalle_col:
-        st.markdown("### Panel rápido")
-
-        if citas_dia.empty:
-            st.info("Selecciona otra fecha o filtro para ver detalles.")
-        else:
-            opciones = citas_dia.sort_values("Hora").apply(
-                lambda r: f"{r['Hora']} - {r['Cliente']} ({r['Servicio']})",
-                axis=1
-            ).tolist()
-            seleccion = st.selectbox("Selecciona cita", opciones, key="agenda_fresha_detalle")
-            selected_row = citas_dia.sort_values("Hora").iloc[opciones.index(seleccion)]
-
-            st.markdown('<span class="section-chip">Detalle de cita</span>', unsafe_allow_html=True)
-            render_appointment_card(selected_row)
-
-            cliente_info = get_client_info(selected_row["Cliente"])
-            if cliente_info is not None:
-                st.write(f"**Teléfono:** {cliente_info.get('Telefono', '')}")
-                st.write(f"**Email:** {cliente_info.get('Email', '')}")
-                st.write(f"**Perfil:** {cliente_info.get('Notas', '')}")
-
-            st.write(f"**Notas de cita:** {selected_row['Notas']}")
-            st.write(f"**Materiales:** {selected_row['Materiales']}")
-            st.write(f"**Diseño:** {selected_row['Diseno']}")
-            st.divider()
-            render_whatsapp_buttons(selected_row)
-
-
-elif menu == "Calendario":
-    render_fresha_hero(
-        "Calendario",
-        "Vista flexible de citas por año, mes, semana o día."
-    )
-
-    citas = st.session_state.citas.copy()
-
-    empleados_activos = st.session_state.empleados[
-        st.session_state.empleados["Activo"] == True
-    ]["Nombre"].tolist()
-
-    vista = st.radio(
-        "Vista del calendario",
-        ["Día", "Semana", "Mes", "Año"],
-        horizontal=True,
-        key="calendario_tipo_vista"
-    )
-
-    filtro_empleado = st.selectbox(
-        "Filtrar por empleada",
-        ["Todas"] + empleados_activos,
-        key="calendario_filtro_empleado"
-    )
-
-    if filtro_empleado != "Todas":
-        citas = citas[citas["Empleado"] == filtro_empleado]
-
-    citas["Fecha_dt"] = pd.to_datetime(citas["Fecha"], errors="coerce")
-    citas = citas.dropna(subset=["Fecha_dt"])
-
-    # =========================
-    # VISTA DÍA
-    # =========================
-
-    if vista == "Día":
-        fecha_dia = st.date_input(
-            "Selecciona día",
-            value=date.today(),
-            key="calendario_vista_dia"
-        )
-
-        citas_dia = citas[citas["Fecha_dt"].dt.date == fecha_dia]
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            render_stat_card("Citas del día", len(citas_dia), fecha_dia.strftime("%d/%m/%Y"))
-        with c2:
-            total_dia = pd.to_numeric(citas_dia.get("Precio", 0), errors="coerce").fillna(0).sum()
-            render_stat_card("Ventas del día", money(total_dia), "Según citas filtradas")
-        with c3:
-            clientes_dia = citas_dia["Cliente"].nunique() if not citas_dia.empty else 0
-            render_stat_card("Clientes", clientes_dia, "Clientes únicos")
-
-        st.markdown("### Agenda del día")
-
-        if citas_dia.empty:
-            st.info("No hay citas para este día.")
-        else:
-            for _, row in citas_dia.sort_values("Hora").iterrows():
-                render_appointment_card(row)
-
-                with st.expander(f"Ver detalles - {row['Cliente']} {row['Hora']}"):
-                    cliente_info = st.session_state.clientes[
-                        st.session_state.clientes["Nombre"] == row["Cliente"]
-                    ]
-
-                    if not cliente_info.empty:
-                        cli = cliente_info.iloc[0]
-                        st.write(f"**Teléfono:** {cli['Telefono']}")
-                        st.write(f"**Email:** {cli['Email']}")
-                        st.write(f"**Perfil cliente:** {cli['Notas']}")
-
-                    st.write(f"**Servicio:** {row['Servicio']}")
-                    st.write(f"**Diseño:** {row['Diseno']}")
-                    st.write(f"**Materiales:** {row['Materiales']}")
-                    st.write(f"**Costo materiales:** {money(row['Costo materiales'])}")
-                    st.write(f"**Precio:** {money(row['Precio'])}")
-                    st.write(f"**Estado:** {row['Estado']}")
-                    st.write(f"**Notas cita:** {row['Notas']}")
-                    st.divider()
-                    render_whatsapp_buttons(row)
-
-    # =========================
-    # VISTA SEMANA
-    # =========================
-
-    elif vista == "Semana":
-        fecha_base = st.date_input(
-            "Semana de",
-            value=date.today(),
-            key="calendario_vista_semana"
-        )
-
-        inicio_semana = fecha_base - timedelta(days=fecha_base.weekday())
-        fin_semana = inicio_semana + timedelta(days=6)
-        dias = [inicio_semana + timedelta(days=i) for i in range(7)]
-
-        citas_semana = citas[
-            (citas["Fecha_dt"].dt.date >= inicio_semana) &
-            (citas["Fecha_dt"].dt.date <= fin_semana)
-        ]
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            render_stat_card("Citas de la semana", len(citas_semana), f"{inicio_semana.strftime('%d/%m')} - {fin_semana.strftime('%d/%m')}")
-        with c2:
-            total_semana = pd.to_numeric(citas_semana.get("Precio", 0), errors="coerce").fillna(0).sum()
-            render_stat_card("Ventas semana", money(total_semana), "Según citas filtradas")
-        with c3:
-            clientes_semana = citas_semana["Cliente"].nunique() if not citas_semana.empty else 0
-            render_stat_card("Clientes", clientes_semana, "Clientes únicos")
-
-        cols = st.columns(7)
-
-        dias_es = {
-            "Monday": "Lunes",
-            "Tuesday": "Martes",
-            "Wednesday": "Miércoles",
-            "Thursday": "Jueves",
-            "Friday": "Viernes",
-            "Saturday": "Sábado",
-            "Sunday": "Domingo"
-        }
-
-        for i, dia in enumerate(dias):
-            with cols[i]:
-                nombre_dia = dias_es.get(dia.strftime("%A"), dia.strftime("%A"))
-
-                st.markdown(f"""
-                <div class="day-box">
-                <b>{nombre_dia}</b><br>
-                {dia.strftime('%d/%m/%Y')}
-                <hr>
-                """, unsafe_allow_html=True)
-
-                citas_dia = citas[citas["Fecha_dt"].dt.date == dia]
-
-                if citas_dia.empty:
-                    st.caption("Sin citas")
-                else:
-                    for idx, row in citas_dia.sort_values("Hora").iterrows():
-                        render_appointment_card(row, compact=True)
-
-                        with st.expander(f"Ver - {row['Cliente']}"):
-                            st.write(f"**Hora:** {row['Hora']}")
-                            st.write(f"**Cliente:** {row['Cliente']}")
-                            st.write(f"**Empleado:** {row['Empleado']}")
-                            st.write(f"**Servicio:** {row['Servicio']}")
-                            st.write(f"**Diseño:** {row['Diseno']}")
-                            st.write(f"**Materiales:** {row['Materiales']}")
-                            st.write(f"**Precio:** {money(row['Precio'])}")
-                            st.write(f"**Estado:** {row['Estado']}")
-                            render_whatsapp_buttons(row)
-
-                st.markdown("</div>", unsafe_allow_html=True)
-
-    # =========================
-    # VISTA MES
-    # =========================
-
-    elif vista == "Mes":
-        hoy = date.today()
-
-        col_mes, col_anio = st.columns(2)
-
-        with col_mes:
-            mes = st.selectbox(
-                "Mes",
-                list(range(1, 13)),
-                index=hoy.month - 1,
-                format_func=lambda x: [
-                    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-                ][x - 1],
-                key="calendario_mes"
-            )
-
-        with col_anio:
-            anio = st.number_input(
-                "Año",
-                min_value=2020,
-                max_value=2035,
-                value=hoy.year,
-                step=1,
-                key="calendario_anio_mes"
-            )
-
-        citas_mes = citas[
-            (citas["Fecha_dt"].dt.month == mes) &
-            (citas["Fecha_dt"].dt.year == anio)
-        ]
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            render_stat_card("Citas del mes", len(citas_mes), "Total mensual")
-        with c2:
-            total_mes = pd.to_numeric(citas_mes.get("Precio", 0), errors="coerce").fillna(0).sum()
-            render_stat_card("Ventas del mes", money(total_mes), "Según citas filtradas")
-        with c3:
-            clientes_mes = citas_mes["Cliente"].nunique() if not citas_mes.empty else 0
-            render_stat_card("Clientes", clientes_mes, "Clientes únicos")
-
-        st.markdown("### Calendario mensual")
-
-        cal = calendar.Calendar(firstweekday=0)
-        semanas = cal.monthdatescalendar(int(anio), int(mes))
-
-        dias_es_corto = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-
-        header_cols = st.columns(7)
-        for i, nombre in enumerate(dias_es_corto):
-            header_cols[i].markdown(f"**{nombre}**")
-
-        for semana in semanas:
-            cols = st.columns(7)
-
-            for i, dia in enumerate(semana):
-                with cols[i]:
-                    if dia.month != mes:
-                        st.markdown(f"""
-                        <div class="day-box" style="opacity:0.35;">
-                        <b>{dia.day}</b>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        citas_dia = citas_mes[citas_mes["Fecha_dt"].dt.date == dia]
-
-                        st.markdown(f"""
-                        <div class="day-box">
-                        <b>{dia.day}</b><br>
-                        <span class="small-muted">{len(citas_dia)} citas</span>
-                        <hr>
-                        """, unsafe_allow_html=True)
-
-                        if citas_dia.empty:
-                            st.caption("Sin citas")
-                        else:
-                            for _, row in citas_dia.sort_values("Hora").head(4).iterrows():
-                                render_appointment_card(row, compact=True)
-
-                            if len(citas_dia) > 4:
-                                st.caption(f"+ {len(citas_dia) - 4} más")
-
-                        st.markdown("</div>", unsafe_allow_html=True)
-
-    # =========================
-    # VISTA AÑO
-    # =========================
-
-    elif vista == "Año":
-        anio = st.number_input(
-            "Selecciona año",
-            min_value=2020,
-            max_value=2035,
-            value=date.today().year,
-            step=1,
-            key="calendario_vista_anio"
-        )
-
-        citas_anio = citas[citas["Fecha_dt"].dt.year == anio]
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            render_stat_card("Citas del año", len(citas_anio), str(anio))
-        with c2:
-            total_anio = pd.to_numeric(citas_anio.get("Precio", 0), errors="coerce").fillna(0).sum()
-            render_stat_card("Ventas del año", money(total_anio), "Según citas filtradas")
-        with c3:
-            clientes_anio = citas_anio["Cliente"].nunique() if not citas_anio.empty else 0
-            render_stat_card("Clientes", clientes_anio, "Clientes únicos")
-
-        st.markdown("### Resumen anual por mes")
-
-        meses_nombre = [
-            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-        ]
-
-        rows = []
-
-        for m in range(1, 13):
-            citas_m = citas_anio[citas_anio["Fecha_dt"].dt.month == m]
-            ventas_m = pd.to_numeric(citas_m.get("Precio", 0), errors="coerce").fillna(0).sum()
-
-            rows.append({
-                "Mes": meses_nombre[m - 1],
-                "Citas": len(citas_m),
-                "Clientes únicos": citas_m["Cliente"].nunique() if not citas_m.empty else 0,
-                "Ventas": ventas_m
-            })
-
-        resumen_anual = pd.DataFrame(rows)
-        st.dataframe(resumen_anual, use_container_width=True)
-
-        st.markdown("### Vista rápida por mes")
-
-        for fila in range(0, 12, 4):
-            cols = st.columns(4)
-
-            for i in range(4):
-                mes_num = fila + i + 1
-                mes_nombre = meses_nombre[mes_num - 1]
-                citas_m = citas_anio[citas_anio["Fecha_dt"].dt.month == mes_num]
-                ventas_m = pd.to_numeric(citas_m.get("Precio", 0), errors="coerce").fillna(0).sum()
-
-                with cols[i]:
-                    st.markdown(f"""
-                    <div class="fresha-stat-card">
-                        <div class="fresha-stat-label">{mes_nombre}</div>
-                        <div class="fresha-stat-value">{len(citas_m)}</div>
-                        <div class="small-muted">citas · {money(ventas_m)}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-
-# =========================
-# NUEVA CITA
-# =========================
-
-elif menu == "Nueva cita":
-    st.header("Agregar nueva cita")
-
-    clientes = st.session_state.clientes["Nombre"].tolist()
-    empleados_activos = st.session_state.empleados[
-        st.session_state.empleados["Activo"] == True
-    ]["Nombre"].tolist()
-
-    with st.form("form_cita"):
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-            fecha = st.date_input("Fecha", value=date.today())
-            hora = st.time_input("Hora", value=time(10, 0))
-            cliente = st.selectbox("Cliente", clientes)
-
-        with c2:
-            empleado = st.selectbox("Empleado / Técnica", empleados_activos)
-            servicio = st.text_input("Servicio", "Manicure gel")
-            estado = st.selectbox("Estado", ["Confirmada", "Pendiente", "Cancelada", "Completada"])
-
-        with c3:
-            precio = st.number_input("Precio", min_value=0.0, value=55.0)
-            costo_materiales = st.number_input("Costo materiales", min_value=0.0, value=8.0)
-
-        diseno = st.text_input("Diseño / tipo de trabajo")
-        materiales = st.text_area("Materiales a usar")
-        notas = st.text_area("Notas")
-
-        guardar = st.form_submit_button("Guardar cita")
-
-    if guardar:
-        nueva = pd.DataFrame([{
-            "Fecha": str(fecha),
-            "Hora": hora.strftime("%H:%M"),
-            "Cliente": cliente,
-            "Empleado": empleado,
-            "Servicio": servicio,
-            "Diseno": diseno,
-            "Materiales": materiales,
-            "Costo materiales": costo_materiales,
-            "Precio": precio,
-            "Estado": estado,
-            "Notas": notas
-        }])
-
-        st.session_state.citas = pd.concat(
-            [st.session_state.citas, nueva],
-            ignore_index=True
-        )
-
-        st.success("Cita guardada correctamente.")
-
-
-# =========================
-# CLIENTES
-# =========================
-
-elif menu == "Clientes":
-    st.header("Clientes")
-
-    with st.expander("Agregar cliente"):
-        with st.form("form_cliente"):
-            nombre = st.text_input("Nombre")
-            telefono = st.text_input("Teléfono")
-            email = st.text_input("Email")
-            cumple = st.date_input("Cumpleaños", value=date(1990, 1, 1))
-            notas = st.text_area("Notas / perfil del cliente")
-
-            guardar = st.form_submit_button("Guardar cliente")
-
-        if guardar and nombre:
-            nuevo = pd.DataFrame([{
-                "Nombre": nombre,
-                "Telefono": telefono,
-                "Email": email,
-                "Cumpleanos": str(cumple),
-                "Notas": notas
-            }])
-            st.session_state.clientes = pd.concat(
-                [st.session_state.clientes, nuevo],
-                ignore_index=True
-            )
-            st.success("Cliente agregado.")
-
-    st.dataframe(st.session_state.clientes, use_container_width=True)
-
-    st.subheader("WhatsApp rápido a cliente")
-
-    clientes_lista = st.session_state.clientes["Nombre"].tolist()
-
-    if clientes_lista:
-        cliente_wa = st.selectbox("Cliente", clientes_lista, key="cliente_whatsapp_select")
-        cliente_info = get_client_info(cliente_wa)
-
-        if cliente_info is not None:
-            telefono = cliente_info.get("Telefono", "")
-            mensaje = st.text_area(
-                "Mensaje",
-                value=f"Hola {cliente_wa}, te escribimos de Greta Studio. ¿Cómo estás?",
-                key="mensaje_whatsapp_cliente"
-            )
-            whatsapp_url = build_whatsapp_url(telefono, mensaje)
-            st.link_button("📲 Abrir WhatsApp", whatsapp_url)
-    else:
-        st.info("Agrega clientes para usar WhatsApp rápido.")
-
-
-
+# -------------------------------------------------
+# 5) Insertar nuevos módulos antes de WHATSAPP
+# -------------------------------------------------
+whatsapp_marker = '''
 # =========================
 # WHATSAPP
 # =========================
+'''
 
-elif menu == "WhatsApp":
-    st.header("WhatsApp")
-    st.info("Esta versión abre WhatsApp con mensajes prellenados. No envía mensajes automáticamente, así evitamos costos y configuración complicada por ahora.")
-
-    citas = st.session_state.citas.copy()
-    clientes = st.session_state.clientes.copy()
-
-    tab1, tab2, tab3 = st.tabs(["Mensajes por cita", "Mensaje libre", "Promos y cumpleaños"])
-
-    with tab1:
-        st.subheader("Enviar mensaje relacionado con una cita")
-
-        if citas.empty:
-            st.info("No hay citas registradas.")
-        else:
-            citas["Etiqueta"] = citas.apply(
-                lambda r: f"{r['Fecha']} {r['Hora']} - {r['Cliente']} con {r['Empleado']} ({r['Servicio']})",
-                axis=1
-            )
-            etiqueta = st.selectbox("Selecciona una cita", citas["Etiqueta"].tolist())
-            row = citas[citas["Etiqueta"] == etiqueta].iloc[0]
-
-            cliente_info = get_client_info(row["Cliente"])
-
-            if cliente_info is None:
-                st.warning("No se encontró el cliente de esta cita.")
-            else:
-                st.write(f"**Cliente:** {row['Cliente']}")
-                st.write(f"**Teléfono:** {cliente_info.get('Telefono', '')}")
-                st.write(f"**Cita:** {row['Fecha']} a las {row['Hora']} con {row['Empleado']}")
-                st.write(f"**Servicio:** {row['Servicio']}")
-
-                st.markdown("### Templates de mensajes")
-                st.caption("Escoge un template, edítalo si quieres y luego abre WhatsApp.")
-
-                plantilla_confirmacion = st.selectbox(
-                    "Template para confirmación",
-                    ["Confirmación cálida", "Confirmación breve"],
-                    key="wa_template_confirmacion"
-                )
-                msg_confirmacion = st.text_area(
-                    "Mensaje de confirmación",
-                    value=whatsapp_template(
-                        plantilla_confirmacion,
-                        cliente=row["Cliente"],
-                        fecha=row["Fecha"],
-                        hora=row["Hora"],
-                        empleado=row["Empleado"],
-                        servicio=row["Servicio"]
-                    ),
-                    height=110,
-                    key=f"wa_msg_confirmacion_{etiqueta}_{plantilla_confirmacion}"
-                )
-
-                plantilla_recordatorio = st.selectbox(
-                    "Template para recordatorio",
-                    ["Recordatorio cálido", "Recordatorio con política"],
-                    key="wa_template_recordatorio"
-                )
-                msg_recordatorio = st.text_area(
-                    "Mensaje de recordatorio",
-                    value=whatsapp_template(
-                        plantilla_recordatorio,
-                        cliente=row["Cliente"],
-                        fecha=row["Fecha"],
-                        hora=row["Hora"],
-                        empleado=row["Empleado"],
-                        servicio=row["Servicio"]
-                    ),
-                    height=110,
-                    key=f"wa_msg_recordatorio_{etiqueta}_{plantilla_recordatorio}"
-                )
-
-                plantilla_gracias = st.selectbox(
-                    "Template para agradecimiento",
-                    ["Gracias después de cita", "Pedir reseña"],
-                    key="wa_template_gracias"
-                )
-                msg_gracias = st.text_area(
-                    "Mensaje de agradecimiento",
-                    value=whatsapp_template(
-                        plantilla_gracias,
-                        cliente=row["Cliente"],
-                        fecha=row["Fecha"],
-                        hora=row["Hora"],
-                        empleado=row["Empleado"],
-                        servicio=row["Servicio"]
-                    ),
-                    height=110,
-                    key=f"wa_msg_gracias_{etiqueta}_{plantilla_gracias}"
-                )
-
-                render_whatsapp_buttons(row, custom_messages={
-                    "confirmacion": msg_confirmacion,
-                    "recordatorio": msg_recordatorio,
-                    "gracias": msg_gracias
-                })
-
-    with tab2:
-        st.subheader("Mensaje libre a cliente")
-
-        clientes_lista = clientes["Nombre"].tolist()
-
-        if not clientes_lista:
-            st.info("No hay clientes registrados.")
-        else:
-            cliente_nombre = st.selectbox("Cliente", clientes_lista, key="whatsapp_mensaje_libre_cliente")
-            cliente_info = get_client_info(cliente_nombre)
-
-            if cliente_info is not None:
-                telefono = cliente_info.get("Telefono", "")
-                mensaje = st.text_area(
-                    "Mensaje personalizado",
-                    value=f"Hola {cliente_nombre}, te escribimos de Greta Studio.",
-                    height=140
-                )
-
-                st.write(f"**Teléfono:** {telefono}")
-                st.link_button("📲 Abrir WhatsApp con este mensaje", build_whatsapp_url(telefono, mensaje))
-
-
-    with tab3:
-        st.subheader("Promos, descuentos y cumpleaños")
-        st.caption("Usa esta sección para mandar promociones generales, descuentos de cumpleaños o reactivar clientes.")
-
-        clientes_lista = clientes["Nombre"].tolist()
-
-        if not clientes_lista:
-            st.info("No hay clientes registrados.")
-        else:
-            cliente_promo = st.selectbox("Cliente", clientes_lista, key="whatsapp_promo_cliente")
-            cliente_info = get_client_info(cliente_promo)
-
-            tipo_promo = st.selectbox(
-                "Tipo de mensaje",
-                ["Promo general", "Cumpleaños", "Reactivar cliente"],
-                key="whatsapp_tipo_promo"
-            )
-
-            descuento = st.text_input(
-                "Descuento o promoción",
-                value="15% de descuento",
-                key="whatsapp_descuento_promo"
-            )
-
-            mensaje_promo = st.text_area(
-                "Mensaje promocional",
-                value=whatsapp_template(
-                    tipo_promo,
-                    cliente=cliente_promo,
-                    descuento=descuento
-                ),
-                height=150,
-                key=f"wa_msg_promo_{cliente_promo}_{tipo_promo}_{descuento}"
-            )
-
-            if cliente_info is not None:
-                telefono = cliente_info.get("Telefono", "")
-                cumple = cliente_info.get("Cumpleanos", "")
-                st.write(f"**Teléfono:** {telefono}")
-                st.write(f"**Cumpleaños registrado:** {cumple}")
-                st.link_button("📲 Abrir WhatsApp con promo", build_whatsapp_url(telefono, mensaje_promo))
-
-            st.divider()
-            st.subheader("Clientes con cumpleaños este mes")
-
-            clientes_cumple = clientes.copy()
-            clientes_cumple["Cumpleanos_dt"] = pd.to_datetime(clientes_cumple["Cumpleanos"], errors="coerce")
-            clientes_cumple = clientes_cumple[clientes_cumple["Cumpleanos_dt"].dt.month == date.today().month]
-
-            if clientes_cumple.empty:
-                st.info("No hay cumpleaños registrados para este mes.")
-            else:
-                st.dataframe(
-                    clientes_cumple.drop(columns=["Cumpleanos_dt"]),
-                    use_container_width=True
-                )
+new_modules = r'''
 
 # =========================
-# EMPLEADOS
+# VENTAS
 # =========================
 
-elif menu == "Empleados":
-    st.header("Empleados")
-
-    st.info("Sección de administración. Aquí se manejan Greta, Eva y futuras técnicas.")
-
-    with st.expander("Agregar empleada"):
-        with st.form("form_empleado"):
-            nombre = st.text_input("Nombre empleada")
-            puesto = st.text_input("Puesto", "Técnica")
-            activo = st.checkbox("Activo", value=True)
-            tipo_pago = st.selectbox("Tipo de pago", ["Sueldo", "Comisión", "Sueldo + comisión", "Dueña"])
-            sueldo = st.number_input("Sueldo base", min_value=0.0, value=0.0)
-            comision = st.number_input("Comisión %", min_value=0.0, max_value=100.0, value=20.0)
-
-            guardar = st.form_submit_button("Guardar empleada")
-
-        if guardar and nombre:
-            nuevo = pd.DataFrame([{
-                "Nombre": nombre,
-                "Puesto": puesto,
-                "Activo": activo,
-                "Tipo pago": tipo_pago,
-                "Sueldo base": sueldo,
-                "Comision %": comision
-            }])
-            st.session_state.empleados = pd.concat(
-                [st.session_state.empleados, nuevo],
-                ignore_index=True
-            )
-            st.success("Empleada agregada.")
-
-    edited = st.data_editor(
-        st.session_state.empleados,
-        use_container_width=True,
-        num_rows="dynamic"
+elif menu == "Ventas":
+    render_fresha_hero(
+        "Ventas",
+        "Registra pagos, revisa ventas del día y conecta cada venta con una cita o servicio."
     )
 
-    if st.button("Guardar cambios de empleados"):
-        st.session_state.empleados = edited
-        st.success("Cambios guardados.")
-
-
-# =========================
-# NÓMINA
-# =========================
-
-elif menu == "Nómina":
-    st.header("Nómina y comisiones")
-
+    ventas = st.session_state.ventas.copy()
     citas = st.session_state.citas.copy()
-    empleados = st.session_state.empleados.copy()
+    catalogo = st.session_state.catalogo.copy()
 
-    citas["Precio"] = pd.to_numeric(citas["Precio"], errors="coerce").fillna(0)
-    citas["Costo materiales"] = pd.to_numeric(citas["Costo materiales"], errors="coerce").fillna(0)
+    ventas["Total"] = pd.to_numeric(ventas["Total"], errors="coerce").fillna(0)
+    ventas["Fecha_dt"] = pd.to_datetime(ventas["Fecha"], errors="coerce")
 
-    fecha_inicio = st.date_input("Desde", value=date.today().replace(day=1))
-    fecha_fin = st.date_input("Hasta", value=date.today())
-
-    citas["Fecha_dt"] = pd.to_datetime(citas["Fecha"], errors="coerce")
-    citas_periodo = citas[
-        (citas["Fecha_dt"].dt.date >= fecha_inicio) &
-        (citas["Fecha_dt"].dt.date <= fecha_fin)
-    ]
-
-    rows = []
-
-    for _, emp in empleados.iterrows():
-        nombre = emp["Nombre"]
-        citas_emp = citas_periodo[citas_periodo["Empleado"] == nombre]
-
-        ingresos = citas_emp["Precio"].sum()
-        materiales = citas_emp["Costo materiales"].sum()
-        comision_pct = float(emp["Comision %"])
-        sueldo_base = float(emp["Sueldo base"])
-
-        comision_monto = ingresos * (comision_pct / 100)
-        total_pago = sueldo_base + comision_monto
-
-        rows.append({
-            "Empleado": nombre,
-            "Puesto": emp["Puesto"],
-            "Tipo pago": emp["Tipo pago"],
-            "Citas": len(citas_emp),
-            "Ingresos generados": ingresos,
-            "Costo materiales": materiales,
-            "Sueldo base": sueldo_base,
-            "Comisión %": comision_pct,
-            "Comisión $": comision_monto,
-            "Total a pagar": total_pago
-        })
-
-    nomina = pd.DataFrame(rows)
-
-    st.dataframe(nomina, use_container_width=True)
-
-    st.subheader("Detalle de citas del periodo")
-    st.dataframe(citas_periodo.drop(columns=["Fecha_dt"]), use_container_width=True)
-
-
-# =========================
-# INVENTARIO
-# =========================
-
-elif menu == "Inventario":
-    st.header("Inventario")
-
-    with st.expander("Agregar producto"):
-        with st.form("form_producto"):
-            producto = st.text_input("Producto")
-            categoria = st.text_input("Categoría")
-            cantidad = st.number_input("Cantidad", min_value=0, value=1)
-            minimo = st.number_input("Mínimo antes de alerta", min_value=0, value=3)
-            costo = st.number_input("Costo unidad", min_value=0.0, value=0.0)
-            barcode = st.text_input("Barcode / código")
-
-            guardar = st.form_submit_button("Guardar producto")
-
-        if guardar and producto:
-            nuevo = pd.DataFrame([{
-                "Producto": producto,
-                "Categoria": categoria,
-                "Cantidad": cantidad,
-                "Minimo": minimo,
-                "Costo unidad": costo,
-                "Barcode": barcode
-            }])
-            st.session_state.inventario = pd.concat(
-                [st.session_state.inventario, nuevo],
-                ignore_index=True
-            )
-            st.success("Producto agregado.")
-
-    inventario = st.session_state.inventario.copy()
-    inventario["Cantidad"] = pd.to_numeric(inventario["Cantidad"], errors="coerce").fillna(0)
-    inventario["Minimo"] = pd.to_numeric(inventario["Minimo"], errors="coerce").fillna(0)
-
-    bajos = inventario[inventario["Cantidad"] <= inventario["Minimo"]]
-
-    if not bajos.empty:
-        st.warning("Hay productos bajos en inventario.")
-        st.dataframe(bajos, use_container_width=True)
-
-    edited = st.data_editor(
-        inventario,
-        use_container_width=True,
-        num_rows="dynamic"
-    )
-
-    if st.button("Guardar cambios de inventario"):
-        st.session_state.inventario = edited
-        st.success("Inventario actualizado.")
-
-
-# =========================
-# FINANZAS
-# =========================
-
-elif menu == "Finanzas":
-    st.header("Finanzas")
-
-    citas = st.session_state.citas.copy()
-    gastos = st.session_state.gastos.copy()
-
-    citas["Precio"] = pd.to_numeric(citas["Precio"], errors="coerce").fillna(0)
-    citas["Costo materiales"] = pd.to_numeric(citas["Costo materiales"], errors="coerce").fillna(0)
-    gastos["Monto"] = pd.to_numeric(gastos["Monto"], errors="coerce").fillna(0)
-
-    ingresos = citas["Precio"].sum()
-    costo_materiales = citas["Costo materiales"].sum()
-    gastos_total = gastos["Monto"].sum()
-    ganancia = ingresos - costo_materiales - gastos_total
+    hoy = date.today()
+    ventas_hoy = ventas[ventas["Fecha_dt"].dt.date == hoy] if not ventas.empty else ventas
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Ingresos citas", money(ingresos))
-    c2.metric("Materiales usados", money(costo_materiales))
-    c3.metric("Gastos registrados", money(gastos_total))
-    c4.metric("Ganancia estimada", money(ganancia))
+    with c1:
+        render_stat_card("Ventas hoy", money(ventas_hoy["Total"].sum() if not ventas_hoy.empty else 0), "Total cobrado hoy")
+    with c2:
+        render_stat_card("Tickets hoy", len(ventas_hoy), "Ventas registradas")
+    with c3:
+        render_stat_card("Venta promedio", money(ventas_hoy["Total"].mean() if not ventas_hoy.empty else 0), "Promedio por ticket")
+    with c4:
+        render_stat_card("Ventas totales", money(ventas["Total"].sum()), "Histórico")
 
-    st.subheader("Registrar gasto")
-
-    with st.form("form_gasto"):
-        fecha = st.date_input("Fecha gasto", value=date.today())
-        concepto = st.text_input("Concepto")
-        categoria = st.text_input("Categoría")
-        monto = st.number_input("Monto", min_value=0.0, value=0.0)
-        notas = st.text_area("Notas")
-
-        guardar = st.form_submit_button("Guardar gasto")
-
-    if guardar and concepto:
-        nuevo = pd.DataFrame([{
-            "Fecha": str(fecha),
-            "Concepto": concepto,
-            "Categoria": categoria,
-            "Monto": monto,
-            "Notas": notas
-        }])
-        st.session_state.gastos = pd.concat(
-            [st.session_state.gastos, nuevo],
-            ignore_index=True
-        )
-        st.success("Gasto guardado.")
-
-    st.subheader("Gastos")
-    st.dataframe(st.session_state.gastos, use_container_width=True)
-
-
-# =========================
-# EXCEL / BACKUP
-# =========================
-
-elif menu == "Excel / Backup":
-    st.header("Excel / Backup")
-
-    st.subheader("Exportar información")
-
-    excel_data = export_excel()
-
-    st.download_button(
-        label="Descargar backup Excel",
-        data=excel_data,
-        file_name="greta_studio_backup.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-    st.subheader("Importar Excel")
-
-    archivo = st.file_uploader("Subir archivo Excel de backup", type=["xlsx"])
-
-    if archivo is not None:
-        if st.button("Importar archivo"):
-            try:
-                import_excel(archivo)
-                st.success("Información importada correctamente.")
-            except Exception as e:
-                st.error(f"No se pudo importar el archivo: {e}")
-
-    st.divider()
-
-    st.subheader("Datos actuales")
-
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["Clientes", "Empleados", "Citas", "Inventario", "Gastos"]
-    )
+    tab1, tab2 = st.tabs(["Nueva venta", "Historial de ventas"])
 
     with tab1:
-        st.dataframe(st.session_state.clientes, use_container_width=True)
+        st.subheader("Registrar venta")
+
+        clientes_lista = st.session_state.clientes["Nombre"].tolist()
+        empleados_lista = st.session_state.empleados[
+            st.session_state.empleados["Activo"] == True
+        ]["Nombre"].tolist()
+        servicios_lista = catalogo[catalogo["Activo"] == True]["Servicio"].tolist()
+
+        with st.form("form_venta"):
+            v1, v2, v3 = st.columns(3)
+
+            with v1:
+                fecha_venta = st.date_input("Fecha", value=date.today(), key="venta_fecha")
+                cliente_venta = st.selectbox("Cliente", clientes_lista, key="venta_cliente")
+                empleado_venta = st.selectbox("Empleado", empleados_lista, key="venta_empleado")
+
+            with v2:
+                servicio_venta = st.selectbox("Servicio", servicios_lista, key="venta_servicio")
+                metodo_pago = st.selectbox("Método de pago", ["Efectivo", "Tarjeta", "Zelle", "Cash App", "Otro"])
+                descuento = st.number_input("Descuento", min_value=0.0, value=0.0)
+
+            with v3:
+                precio_sugerido = 0.0
+                if servicio_venta:
+                    match = catalogo[catalogo["Servicio"] == servicio_venta]
+                    if not match.empty:
+                        precio_sugerido = float(match.iloc[0]["Precio"])
+
+                subtotal = st.number_input("Subtotal", min_value=0.0, value=precio_sugerido)
+                total = max(subtotal - descuento, 0)
+                st.metric("Total", money(total))
+
+            notas_venta = st.text_area("Notas de venta")
+            guardar_venta = st.form_submit_button("Guardar venta")
+
+        if guardar_venta:
+            nueva_venta = pd.DataFrame([{
+                "Fecha": str(fecha_venta),
+                "Cliente": cliente_venta,
+                "Servicio": servicio_venta,
+                "Empleado": empleado_venta,
+                "Metodo pago": metodo_pago,
+                "Subtotal": subtotal,
+                "Descuento": descuento,
+                "Total": total,
+                "Notas": notas_venta
+            }])
+
+            st.session_state.ventas = pd.concat(
+                [st.session_state.ventas, nueva_venta],
+                ignore_index=True
+            )
+
+            st.success("Venta registrada correctamente.")
+
     with tab2:
-        st.dataframe(st.session_state.empleados, use_container_width=True)
+        st.subheader("Historial")
+        st.dataframe(st.session_state.ventas, use_container_width=True)
+
+
+# =========================
+# CATÁLOGO
+# =========================
+
+elif menu == "Catálogo":
+    render_fresha_hero(
+        "Catálogo",
+        "Servicios, precios, duración y disponibilidad para citas y online booking."
+    )
+
+    tab1, tab2 = st.tabs(["Servicios", "Agregar servicio"])
+
+    with tab1:
+        catalogo_editado = st.data_editor(
+            st.session_state.catalogo,
+            use_container_width=True,
+            num_rows="dynamic"
+        )
+
+        if st.button("Guardar cambios del catálogo"):
+            st.session_state.catalogo = catalogo_editado
+            st.success("Catálogo actualizado.")
+
+    with tab2:
+        with st.form("form_servicio_catalogo"):
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                servicio = st.text_input("Nombre del servicio")
+                categoria = st.text_input("Categoría", "Manos")
+
+            with c2:
+                duracion = st.number_input("Duración min", min_value=5, value=60, step=5)
+                precio = st.number_input("Precio", min_value=0.0, value=50.0)
+
+            with c3:
+                activo = st.checkbox("Activo", value=True)
+
+            descripcion = st.text_area("Descripción")
+            guardar_servicio = st.form_submit_button("Guardar servicio")
+
+        if guardar_servicio and servicio:
+            nuevo_servicio = pd.DataFrame([{
+                "Servicio": servicio,
+                "Categoria": categoria,
+                "Duracion min": duracion,
+                "Precio": precio,
+                "Activo": activo,
+                "Descripcion": descripcion
+            }])
+
+            st.session_state.catalogo = pd.concat(
+                [st.session_state.catalogo, nuevo_servicio],
+                ignore_index=True
+            )
+
+            st.success("Servicio agregado al catálogo.")
+
+
+# =========================
+# ONLINE BOOKING
+# =========================
+
+elif menu == "Online booking":
+    render_fresha_hero(
+        "Online booking",
+        "Simulación de reservas online para clientes. Las solicitudes entran como citas pendientes."
+    )
+
+    settings = st.session_state.app_settings
+
+    if not settings.get("online_booking_activo", True):
+        st.warning("Online booking está desactivado en Settings.")
+    else:
+        st.info("Esta vista funciona como una página sencilla para que el cliente solicite una cita. Después podemos separarla como página pública.")
+
+    catalogo = st.session_state.catalogo.copy()
+    servicios_activos = catalogo[catalogo["Activo"] == True]
+
+    empleados_activos = st.session_state.empleados[
+        st.session_state.empleados["Activo"] == True
+    ]["Nombre"].tolist()
+
+    with st.form("form_online_booking"):
+        b1, b2, b3 = st.columns(3)
+
+        with b1:
+            cliente_nombre = st.text_input("Nombre del cliente")
+            cliente_telefono = st.text_input("Teléfono")
+            cliente_email = st.text_input("Email")
+
+        with b2:
+            servicio_online = st.selectbox("Servicio", servicios_activos["Servicio"].tolist())
+            empleado_online = st.selectbox("Profesional preferido", ["Sin preferencia"] + empleados_activos)
+
+        with b3:
+            fecha_online = st.date_input("Fecha deseada", value=date.today())
+            hora_online = st.time_input("Hora deseada", value=time(10, 0))
+
+        notas_online = st.text_area("Notas / diseño que desea")
+        enviar_solicitud = st.form_submit_button("Solicitar cita")
+
+    if enviar_solicitud and cliente_nombre:
+        clientes_actuales = st.session_state.clientes.copy()
+
+        if cliente_nombre not in clientes_actuales["Nombre"].tolist():
+            nuevo_cliente = pd.DataFrame([{
+                "Nombre": cliente_nombre,
+                "Telefono": cliente_telefono,
+                "Email": cliente_email,
+                "Cumpleanos": "",
+                "Notas": "Cliente agregado desde online booking"
+            }])
+            st.session_state.clientes = pd.concat(
+                [st.session_state.clientes, nuevo_cliente],
+                ignore_index=True
+            )
+
+        empleado_final = empleado_online
+        if empleado_final == "Sin preferencia":
+            empleado_final = empleados_activos[0] if empleados_activos else ""
+
+        precio_servicio = 0.0
+        match = servicios_activos[servicios_activos["Servicio"] == servicio_online]
+        if not match.empty:
+            precio_servicio = float(match.iloc[0]["Precio"])
+
+        nueva_cita = pd.DataFrame([{
+            "Fecha": str(fecha_online),
+            "Hora": hora_online.strftime("%H:%M"),
+            "Cliente": cliente_nombre,
+            "Empleado": empleado_final,
+            "Servicio": servicio_online,
+            "Diseno": notas_online,
+            "Materiales": "",
+            "Costo materiales": 0.0,
+            "Precio": precio_servicio,
+            "Estado": "Pendiente",
+            "Notas": "Solicitud creada desde online booking"
+        }])
+
+        st.session_state.citas = pd.concat(
+            [st.session_state.citas, nueva_cita],
+            ignore_index=True
+        )
+
+        st.success("Solicitud recibida. La cita quedó como Pendiente.")
+
+
+# =========================
+# REPORTES
+# =========================
+
+elif menu == "Reportes":
+    render_fresha_hero(
+        "Reportes",
+        "Resumen de desempeño: ventas, citas, clientes, servicios y empleadas."
+    )
+
+    citas = st.session_state.citas.copy()
+    ventas = st.session_state.ventas.copy()
+
+    citas["Fecha_dt"] = pd.to_datetime(citas["Fecha"], errors="coerce")
+    citas["Precio"] = pd.to_numeric(citas["Precio"], errors="coerce").fillna(0)
+    ventas["Fecha_dt"] = pd.to_datetime(ventas["Fecha"], errors="coerce")
+    ventas["Total"] = pd.to_numeric(ventas["Total"], errors="coerce").fillna(0)
+
+    r1, r2 = st.columns(2)
+    with r1:
+        desde = st.date_input("Desde", value=date.today().replace(day=1), key="reportes_desde")
+    with r2:
+        hasta = st.date_input("Hasta", value=date.today(), key="reportes_hasta")
+
+    citas_periodo = citas[
+        (citas["Fecha_dt"].dt.date >= desde) &
+        (citas["Fecha_dt"].dt.date <= hasta)
+    ]
+
+    ventas_periodo = ventas[
+        (ventas["Fecha_dt"].dt.date >= desde) &
+        (ventas["Fecha_dt"].dt.date <= hasta)
+    ]
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        render_stat_card("Ventas", money(ventas_periodo["Total"].sum()), "Periodo seleccionado")
+    with c2:
+        render_stat_card("Citas", len(citas_periodo), "Periodo seleccionado")
+    with c3:
+        render_stat_card("Clientes únicos", citas_periodo["Cliente"].nunique() if not citas_periodo.empty else 0, "En citas")
+    with c4:
+        completadas = len(citas_periodo[citas_periodo["Estado"] == "Completada"]) if not citas_periodo.empty else 0
+        render_stat_card("Completadas", completadas, "Citas cerradas")
+
+    tab1, tab2, tab3 = st.tabs(["Por empleada", "Por servicio", "Por estado"])
+
+    with tab1:
+        if citas_periodo.empty:
+            st.info("No hay citas en este periodo.")
+        else:
+            rep_emp = citas_periodo.groupby("Empleado").agg(
+                Citas=("Cliente", "count"),
+                Ingresos_estimados=("Precio", "sum")
+            ).reset_index()
+            st.dataframe(rep_emp, use_container_width=True)
+
+    with tab2:
+        if citas_periodo.empty:
+            st.info("No hay citas en este periodo.")
+        else:
+            rep_serv = citas_periodo.groupby("Servicio").agg(
+                Citas=("Cliente", "count"),
+                Ingresos_estimados=("Precio", "sum")
+            ).reset_index()
+            st.dataframe(rep_serv, use_container_width=True)
+
     with tab3:
-        st.dataframe(st.session_state.citas, use_container_width=True)
-    with tab4:
-        st.dataframe(st.session_state.inventario, use_container_width=True)
-    with tab5:
-        st.dataframe(st.session_state.gastos, use_container_width=True)
+        if citas_periodo.empty:
+            st.info("No hay citas en este periodo.")
+        else:
+            rep_estado = citas_periodo.groupby("Estado").agg(
+                Citas=("Cliente", "count"),
+                Ingresos_estimados=("Precio", "sum")
+            ).reset_index()
+            st.dataframe(rep_estado, use_container_width=True)
+
+
+# =========================
+# SETTINGS
+# =========================
+
+elif menu == "Settings":
+    require_admin()
+
+    render_fresha_hero(
+        "Settings",
+        "Configuración del negocio, usuarios, roles y preferencias de online booking."
+    )
+
+    tab1, tab2, tab3 = st.tabs(["Negocio", "Usuarios y roles", "Permisos"])
+
+    with tab1:
+        settings = st.session_state.app_settings
+
+        nombre_negocio = st.text_input("Nombre del negocio", value=settings.get("nombre_negocio", "Greta Studio"))
+        telefono_negocio = st.text_input("Teléfono del negocio", value=settings.get("telefono_negocio", ""))
+        direccion_negocio = st.text_area("Dirección", value=settings.get("direccion_negocio", ""))
+        moneda = st.selectbox("Moneda", ["USD", "MXN"], index=0 if settings.get("moneda", "USD") == "USD" else 1)
+        online_booking_activo = st.checkbox("Online booking activo", value=settings.get("online_booking_activo", True))
+        requiere_confirmacion_online = st.checkbox("Solicitudes online requieren confirmación", value=settings.get("requiere_confirmacion_online", True))
+
+        if st.button("Guardar settings del negocio"):
+            st.session_state.app_settings = {
+                "nombre_negocio": nombre_negocio,
+                "telefono_negocio": telefono_negocio,
+                "direccion_negocio": direccion_negocio,
+                "moneda": moneda,
+                "online_booking_activo": online_booking_activo,
+                "requiere_confirmacion_online": requiere_confirmacion_online
+            }
+            st.success("Settings guardados.")
+
+    with tab2:
+        st.subheader("Usuarios")
+        usuarios_editados = st.data_editor(
+            st.session_state.usuarios,
+            use_container_width=True,
+            num_rows="dynamic"
+        )
+
+        if st.button("Guardar usuarios y roles"):
+            st.session_state.usuarios = usuarios_editados
+            st.success("Usuarios actualizados.")
+
+        st.caption("Por ahora esto simula roles dentro de la app. Después se puede conectar a login real con contraseñas.")
+
+    with tab3:
+        st.subheader("Permisos actuales por rol")
+        permisos_rows = []
+        for rol, menus in ROLE_MENUS.items():
+            permisos_rows.append({
+                "Rol": rol,
+                "Secciones permitidas": ", ".join(menus)
+            })
+        st.dataframe(pd.DataFrame(permisos_rows), use_container_width=True)
+
+'''
+
+if new_modules.strip() not in text:
+    text = text.replace(whatsapp_marker, new_modules + whatsapp_marker)
+
+# -------------------------------------------------
+# 6) Export Excel: agregar hojas nuevas si existen
+# -------------------------------------------------
+text = text.replace(
+    'st.session_state.gastos.to_excel(writer, index=False, sheet_name="Gastos")',
+    '''st.session_state.gastos.to_excel(writer, index=False, sheet_name="Gastos")
+        if "catalogo" in st.session_state:
+            st.session_state.catalogo.to_excel(writer, index=False, sheet_name="Catalogo")
+        if "ventas" in st.session_state:
+            st.session_state.ventas.to_excel(writer, index=False, sheet_name="Ventas")
+        if "usuarios" in st.session_state:
+            st.session_state.usuarios.to_excel(writer, index=False, sheet_name="Usuarios")'''
+)
+
+# -------------------------------------------------
+# 7) Import Excel: leer nuevas hojas si existen
+# -------------------------------------------------
+text = text.replace(
+    '''if "Gastos" in xls.sheet_names:
+        st.session_state.gastos = pd.read_excel(file, sheet_name="Gastos")''',
+    '''if "Gastos" in xls.sheet_names:
+        st.session_state.gastos = pd.read_excel(file, sheet_name="Gastos")
+    if "Catalogo" in xls.sheet_names:
+        st.session_state.catalogo = pd.read_excel(file, sheet_name="Catalogo")
+    if "Ventas" in xls.sheet_names:
+        st.session_state.ventas = pd.read_excel(file, sheet_name="Ventas")
+    if "Usuarios" in xls.sheet_names:
+        st.session_state.usuarios = pd.read_excel(file, sheet_name="Usuarios")'''
+)
+
+path.write_text(text)
+print("✅ Greta app actualizada con Ventas, Catálogo, Online booking, Reportes, Settings y Roles.")
+PY
