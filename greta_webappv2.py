@@ -1,6 +1,6 @@
 
 
-python3 <<'PY'
+
 from pathlib import Path
 
 path = Path("greta_webappv2.py")
